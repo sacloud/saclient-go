@@ -36,6 +36,8 @@ import (
 	saht "github.com/sacloud/go-http"
 	. "github.com/sacloud/saclient-go"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 type providerModel struct {
@@ -769,4 +771,41 @@ func (s *ClientTestSuite) TestAuthPreference() {
 		s.NoError(e)
 		s.Regexp("^Bearer ", hdr.Get("Authorization"))
 	})
+}
+
+//nolint:errcheck
+func (s *ClientTestSuite) TestOtelTransport() {
+	ctx := s.T().Context()
+	me := tracetest.NewInMemoryExporter()
+	tp := trace.NewTracerProvider(
+		trace.WithSpanProcessor(
+			trace.NewBatchSpanProcessor(
+				me,
+			),
+		),
+	)
+	_, req, svr := s.authPreferenceMockServer()
+
+	defer me.Shutdown(ctx)
+	defer tp.Shutdown(ctx)
+	defer svr.Close()
+
+	subject, e := s.subject.DupWith(
+		WithTestServer(svr),
+		WithOpenTelemetry(OtelProviders{
+			TracerProvider: tp,
+		}),
+	)
+	s.NoError(e)
+
+	res, e := subject.Do(req.WithContext(ctx))
+	s.NoError(e)
+	if res != nil && res.Body != nil {
+		e = res.Body.Close()
+		s.NoError(e)
+	}
+
+	e = tp.ForceFlush(ctx)
+	s.NoError(e)
+	s.NotEmpty(me.GetSpans().Snapshots())
 }

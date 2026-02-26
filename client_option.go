@@ -23,6 +23,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type clientOption func(*Client) error
@@ -182,6 +185,50 @@ func WithoutRetry() clientOption {
 func WithDefaultTimeout(t time.Duration) clientOption {
 	return func(c *Client) error {
 		c.params.dynamic.apiRequestTimeout.initialize(t)
+		return nil
+	}
+}
+
+type OtelProviders struct {
+	TracerProvider trace.TracerProvider
+	MeterProvider  metric.MeterProvider
+	Propagator     propagation.TextMapPropagator
+}
+
+// WithOpenTelemetry sets the OpenTelemetry provider(s) to be used by the client.
+//
+// ```golang
+//
+//	import (
+//		"context"
+//		"time"
+//
+//	    "github.com/sacloud/saclient-go"
+//		"go.opentelemetry.io/otel/sdk/trace"
+//	)
+//
+//	var theClient saclient.Client
+//
+//	func main() {
+//	    ctx := context.Background()
+//		tp := sdktrace.NewTracerProvider(/* ... your settings here ... */)
+//		defer tp.Shutdown(ctx)
+//
+//		params := saclient.OtelProviders{TracerProvider: tp}
+//		err := theClient.SetWith(saclient.WithOpenTelemetry(params))
+//		if err != nil {
+//			panic(err)
+//		}
+//
+//		// Use the client for requests...
+//	}
+//
+// ```
+//
+// Note that you can safely pass `nil` here.
+func WithOpenTelemetry(providers OtelProviders) clientOption {
+	return func(c *Client) error {
+		c.params.dynamic.otelProviders.initialize(providers)
 		return nil
 	}
 }

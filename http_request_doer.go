@@ -22,6 +22,7 @@ import (
 	"time"
 
 	saht "github.com/sacloud/go-http"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/ratelimit"
 )
 
@@ -106,6 +107,22 @@ func newHttpRequestDoer(c *config) (HttpRequestDoer, error) {
 		d.rateLimiter = ratelimit.New(int(v))
 	} else {
 		d.rateLimiter = ratelimit.NewUnlimited()
+	}
+
+	p, ok, err := obtainFromConfig[OtelProviders](c, "OtelProviders").decompose()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if ok {
+		d.client.Transport = otelhttp.NewTransport(
+			d.client.Transport,
+			otelhttp.WithTracerProvider(p.TracerProvider),
+			otelhttp.WithMeterProvider(p.MeterProvider),
+			otelhttp.WithPropagators(p.Propagator),
+			// TODO: add more options here if needed
+		)
 	}
 
 	// basic middlewares
