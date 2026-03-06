@@ -58,6 +58,7 @@ type storage struct {
 	middlewares           option[[]Middleware]
 	checkRetryFunc        option[retryablehttp.CheckRetry]
 	endpoints             option[map[string]string]
+	otelProviders         option[OtelProviders]
 
 	// Deprecated: this is to migrate from old client.
 	requestCustomizers option[[]saht.RequestCustomizer]
@@ -385,6 +386,7 @@ func (p *parameter) populate(c *config) error {
 	ret = append(ret, p.populateCheckRetryFunc(c))
 	ret = append(ret, p.populateRequestCustomizers(c))
 	ret = append(ret, p.populateEndpoints(c))
+	ret = append(ret, p.populateOtelProviders(c))
 
 	return errors.Join(ret...)
 }
@@ -800,6 +802,20 @@ func (p *parameter) populateEndpoints(c *config) error {
 	return c.set("Endpoints", normalizeEndpoints(merged))
 }
 
+func (p *parameter) populateOtelProviders(c *config) error {
+	v, ok, err := prioritizedParameterValue[OtelProviders](p, c, "OtelProviders").decompose()
+
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return nil // just not set
+	}
+
+	return c.set("OtelProviders", v)
+}
+
 func (p *parameter) populateString(c *config, key string) error {
 	v, ok, err := prioritizedParameterValue[string](p, c, key).decompose()
 
@@ -1091,6 +1107,9 @@ func (s *storage) get(k string) (any, bool) {
 
 	case "Endpoints":
 		return s.endpoints.Get()
+
+	case "OtelProviders":
+		return s.otelProviders.Get()
 
 	default:
 		panic("unknown key: " + k)
