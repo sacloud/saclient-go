@@ -76,6 +76,7 @@ type parameter struct {
 	// Deprecated: for compatibility
 	noEnv bool
 
+	env       []string
 	profileOp *ProfileOp
 	envp      storage
 	argv      storage
@@ -87,7 +88,7 @@ func (p *parameter) setEnviron(env []string) error {
 	if p == nil {
 		return NewErrorf("nil parameter")
 	} else {
-		p.profileOp = NewProfileOp(env)
+		p.env = slices.Clone(env)
 		r := make([]error, 0, 43) // <- 43 is the # of `append` calls below
 		e := intoEnvmap(env)
 		s := &p.envp
@@ -352,8 +353,7 @@ func (p *parameter) populate(c *config) error {
 		return NewErrorf("nil parameter")
 	} else if c == nil {
 		return NewErrorf("nil config")
-	} else if p.profileOp == nil {
-		// Operator not initialized, means there was no call to SetEnviron()
+	} else if p.env == nil {
 		// This could be meddling, but we initialize it here for safety.
 		var envp []string
 		if p.noEnv {
@@ -364,8 +364,18 @@ func (p *parameter) populate(c *config) error {
 		ret = append(ret, p.setEnviron(envp))
 	}
 
+	// At this point if, and only if we cannot infer profile directory, we error out.
+	op, err1 := NewProfileOp(p.env)
+	p.profileOp = op
+
 	*c = make(config)
-	ret = append(ret, p.populateProfileName(c))
+	err2 := p.populateProfileName(c, err1)
+	ret = append(ret, err2)
+
+	if err2 != nil && err2 == err1 {
+		return err2
+	}
+
 	ret = append(ret, p.populateProfile(c))
 	ret = append(ret, p.populatePrivateKeyPath(c))
 	ret = append(ret, p.populatePrivateKey(c))
@@ -396,7 +406,7 @@ func (p *parameter) populate(c *config) error {
 	return errors.Join(ret...)
 }
 
-func (p *parameter) populateProfileName(c *config) error {
+func (p *parameter) populateProfileName(c *config, err error) error {
 	// We need to load a profile.
 	// The one from command-line flag has the highest priority,
 	// then the one from environment variable,
@@ -417,6 +427,8 @@ func (p *parameter) populateProfileName(c *config) error {
 		profileName.initialize(v)
 	} else if v, ok := p.hcl.profileName.Get(); ok {
 		profileName.initialize(v)
+	} else if p.profileOp == nil {
+		return err
 	} else if v, err := p.profileOp.GetCurrentName(); err == nil {
 		profileName.initialize(v)
 	}
