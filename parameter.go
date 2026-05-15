@@ -457,6 +457,11 @@ func (p *parameter) populateProfile(c *config) error {
 		return nil
 	}
 
+	if p.profileOp == nil {
+		// `~/.usacloud` doesn't exist, no profile can be loaded
+		return nil
+	}
+
 	// At this point we can assume p.profileOp is not nil
 	profile, err := p.profileOp.Read(v)
 
