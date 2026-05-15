@@ -364,18 +364,11 @@ func (p *parameter) populate(c *config) error {
 		ret = append(ret, p.setEnviron(envp))
 	}
 
-	// At this point if, and only if we cannot infer profile directory, we error out.
-	op, err1 := NewProfileOp(p.env)
+	op, _ := NewProfileOp(p.env)
 	p.profileOp = op
 
 	*c = make(config)
-	err2 := p.populateProfileName(c, err1)
-	ret = append(ret, err2)
-
-	if err2 != nil && err2 == err1 {
-		return err2
-	}
-
+	ret = append(ret, p.populateProfileName(c))
 	ret = append(ret, p.populateProfile(c))
 	ret = append(ret, p.populatePrivateKeyPath(c))
 	ret = append(ret, p.populatePrivateKey(c))
@@ -406,7 +399,7 @@ func (p *parameter) populate(c *config) error {
 	return errors.Join(ret...)
 }
 
-func (p *parameter) populateProfileName(c *config, err error) error {
+func (p *parameter) populateProfileName(c *config) error {
 	// We need to load a profile.
 	// The one from command-line flag has the highest priority,
 	// then the one from environment variable,
@@ -428,7 +421,8 @@ func (p *parameter) populateProfileName(c *config, err error) error {
 	} else if v, ok := p.hcl.profileName.Get(); ok {
 		profileName.initialize(v)
 	} else if p.profileOp == nil {
-		return err
+		// `~/.usacloud` doesn't exist, no profile can be loaded
+		return nil
 	} else if v, err := p.profileOp.GetCurrentName(); err == nil {
 		profileName.initialize(v)
 	}
@@ -463,6 +457,7 @@ func (p *parameter) populateProfile(c *config) error {
 		return nil
 	}
 
+	// At this point we can assume p.profileOp is not nil
 	profile, err := p.profileOp.Read(v)
 
 	if err != nil {
