@@ -351,9 +351,7 @@ func (s *ProfileTestSuite) TestProfileOp_UnsetHOME() {
 		// SetupSuite sets USERPROFILE on Windows;
 		// unset it explicitly to ensure NewProfileOp fails without home dir.
 		if runtime.GOOS == "windows" {
-			err = os.Unsetenv("USERPROFILE")
-			s.NoError(err)
-			// Also clear fallback envvars that os.UserHomeDir checks on Windows.
+			_ = os.Unsetenv("USERPROFILE")
 			_ = os.Unsetenv("HOMEDRIVE")
 			_ = os.Unsetenv("HOMEPATH")
 		}
