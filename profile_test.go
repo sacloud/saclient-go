@@ -353,10 +353,10 @@ func (s *ProfileTestSuite) TestProfileOp_UnsetHOME() {
 		if runtime.GOOS == "windows" {
 			err = os.Unsetenv("USERPROFILE")
 			s.NoError(err)
+			// Also clear fallback envvars that os.UserHomeDir checks on Windows.
+			_ = os.Unsetenv("HOMEDRIVE")
+			_ = os.Unsetenv("HOMEPATH")
 		}
-		// Also clear fallback envvars that os.UserHomeDir checks on Windows.
-		_ = os.Unsetenv("HOMEDRIVE")
-		_ = os.Unsetenv("HOMEPATH")
 
 		s.Run("Barely no env", func() {
 			op, err := NewProfileOp(os.Environ())
