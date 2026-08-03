@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.4.1](https://github.com/sacloud/saclient-go/compare/v0.4.0...v0.4.1) - 2026-08-03
+- update README for repository transition by @shyouhei in https://github.com/sacloud/saclient-go/pull/118
+
 ## [v0.4.0](https://github.com/sacloud/saclient-go/compare/v0.3.7...v0.4.0) - 2026-05-25
 - Fix typo by @sugyan in https://github.com/sacloud/saclient-go/pull/106
 - [CI] reduce retry count for tests by @shyouhei in https://github.com/sacloud/saclient-go/pull/109
